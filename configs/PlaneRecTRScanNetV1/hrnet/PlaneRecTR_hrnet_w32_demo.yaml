@@ -1,0 +1,6 @@
+_BASE_: PlaneRecTR_hrnet_w32_imagenet_pretrained.yaml
+MODEL:
+  WEIGHTS: "./checkpoint/PlaneRecTR_hrnet32_pretrained.pth"
+INPUT:
+  MIN_SIZE_TEST: 256
+  MAX_SIZE_TEST: 256

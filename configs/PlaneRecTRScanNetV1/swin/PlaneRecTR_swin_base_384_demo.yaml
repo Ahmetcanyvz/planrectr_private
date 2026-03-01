@@ -1,0 +1,6 @@
+_BASE_: PlaneRecTR_swin_base_384_bs16_50ep.yaml
+MODEL:
+  WEIGHTS: "./checkpoint/PlaneRecTR_swinb_pretrained.pth"
+INPUT:
+  MIN_SIZE_TEST: 256
+  MAX_SIZE_TEST: 256
