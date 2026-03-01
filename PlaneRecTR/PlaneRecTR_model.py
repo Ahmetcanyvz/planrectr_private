@@ -352,15 +352,27 @@ class PlaneRecTR(nn.Module):
         if self.predict_param:
             # get depth map
             h, w = plane_seg.shape[-2:]
-            
-            depth_maps_inv = torch.matmul(valid_param, self.k_inv_dot_xy1.to(self.pixel_mean.device))
+
+            # Recompute k_inv_dot_xy1 if resolution differs from stored one
+            k_inv_dot_xy1 = self.k_inv_dot_xy1.to(self.pixel_mean.device)
+            if k_inv_dot_xy1.shape[1] != h * w:
+                from PlaneRecTR.utils.misc import get_coordinate_map
+                k_inv_dot_xy1 = get_coordinate_map("scannetv1_plane", self.pixel_mean.device, h=h, w=w)
+
+            depth_maps_inv = torch.matmul(valid_param, k_inv_dot_xy1)
             depth_maps_inv = torch.clamp(depth_maps_inv, min=0.1, max=1e4)
             depth_maps = 1. / depth_maps_inv  # (valid_plane_num, h*w)
             inferred_planes_depth = depth_maps.t()[range(h*w), plane_seg[:valid_num].argmax(dim=0).view(-1)] # plane depth [h,w]
             inferred_planes_depth = inferred_planes_depth.view(h, w)
             inferred_planes_depth[non_plane_mask] = 0.0 # del non-plane regions
-        
+
         if self.predict_depth:
+            # Resize depth_pred to match mask resolution if needed
+            if depth_pred.shape[-2:] != plane_seg.shape[-2:]:
+                depth_pred = F.interpolate(
+                    depth_pred.unsqueeze(0), size=plane_seg.shape[-2:],
+                    mode='bilinear', align_corners=False
+                ).squeeze(0)
             valid_depth_pred = depth_pred[label_mask] # [valid_plane_num, h, w]
             segmentation = (plane_seg[:valid_num].argmax(dim=0)[:,:,None] == torch.arange(valid_num).to(plane_seg)).permute(2, 0, 1) # [h, w, 1] == []  -> [valid_plane_num, h, w]
             inferred_seg_depth = (segmentation * valid_depth_pred).sum(0) # [h, w]
