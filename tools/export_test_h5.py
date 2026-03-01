@@ -220,11 +220,11 @@ def parse_args():
     return p.parse_args()
 
 
-def export_dataset(dataset_name, predictor, args, infer_h, infer_w):
+def export_dataset(dataset_name, predictor, args, infer_h, infer_w, res_tag):
     if args.output_dir:
         ds_out = os.path.join(args.output_dir, dataset_name)
     else:
-        ds_out = f"/cluster/scratch/ayavuz/dataset/planrectr_{dataset_name}"
+        ds_out = f"/cluster/scratch/ayavuz/dataset/planrectr_{res_tag}/{dataset_name}"
     os.makedirs(ds_out, exist_ok=True)
 
     total_frames = 0
@@ -268,7 +268,8 @@ def main():
 
     # Read inference resolution from config
     infer_h, infer_w = cfg.INPUT.IMAGE_SIZE
-    out_label = args.output_dir or "/cluster/scratch/ayavuz/dataset/planrectr_{dataset}"
+    res_tag = "highres" if (infer_h > 192 or infer_w > 256) else "lowres"
+    out_label = args.output_dir or f"/cluster/scratch/ayavuz/dataset/planrectr_{res_tag}/{{dataset}}"
 
     print("PlaneRecTR Export")
     print("=" * 60)
@@ -284,7 +285,7 @@ def main():
 
     for ds in datasets:
         print(f"\n--- {ds} ---")
-        export_dataset(ds, predictor, args, infer_h, infer_w)
+        export_dataset(ds, predictor, args, infer_h, infer_w, res_tag)
 
     print("\nDone!")
 
