@@ -49,7 +49,7 @@ def setup_cfg(config_file, checkpoint, device):
     return cfg
 
 
-def run_planrectr(predictor, rgb_uint8, out_h, out_w):
+def run_planrectr(predictor, rgb_uint8, out_h, out_w, infer_h, infer_w):
     """
     Run PlaneRecTR on a single RGB image.
 
@@ -57,12 +57,12 @@ def run_planrectr(predictor, rgb_uint8, out_h, out_w):
         predictor: detectron2 DefaultPredictor
         rgb_uint8: (H, W, 3) uint8 RGB image
         out_h, out_w: output resolution for the plane segmentation
+        infer_h, infer_w: model inference resolution (from config IMAGE_SIZE)
 
     Returns:
         labels: (out_h, out_w) uint16 plane segmentation (0=non-planar, 1..K=planes)
     """
-    # PlaneRecTR expects 256x192 input
-    img_resized = cv2.resize(rgb_uint8, (256, 192))
+    img_resized = cv2.resize(rgb_uint8, (infer_w, infer_h))
 
     # DefaultPredictor expects BGR
     img_bgr = cv2.cvtColor(img_resized, cv2.COLOR_RGB2BGR)
@@ -220,7 +220,7 @@ def parse_args():
     return p.parse_args()
 
 
-def export_dataset(dataset_name, predictor, args):
+def export_dataset(dataset_name, predictor, args, infer_h, infer_w):
     if args.output_dir:
         ds_out = os.path.join(args.output_dir, dataset_name)
     else:
@@ -243,7 +243,7 @@ def export_dataset(dataset_name, predictor, args):
         planes_all = np.zeros((n, args.height, args.width), dtype=np.uint16)
 
         for i, rgb in enumerate(tqdm(rgbs, desc=f"  {scene_label}", leave=False)):
-            planes_all[i] = run_planrectr(predictor, rgb, args.height, args.width)
+            planes_all[i] = run_planrectr(predictor, rgb, args.height, args.width, infer_h, infer_w)
 
         out_h5 = os.path.join(ds_out, h5_rel)
         os.makedirs(os.path.dirname(out_h5), exist_ok=True)
@@ -266,6 +266,8 @@ def main():
     cfg = setup_cfg(args.config_file, args.checkpoint, args.device)
     predictor = DefaultPredictor(cfg)
 
+    # Read inference resolution from config
+    infer_h, infer_w = cfg.INPUT.IMAGE_SIZE
     out_label = args.output_dir or "/cluster/scratch/ayavuz/dataset/planrectr_{dataset}"
 
     print("PlaneRecTR Export")
@@ -274,14 +276,15 @@ def main():
     print(f"Checkpoint: {cfg.MODEL.WEIGHTS}")
     print(f"Datasets:   {', '.join(datasets)}")
     print(f"Output:     {out_label}")
-    print(f"Resolution: {args.height}x{args.width}")
+    print(f"Infer res:  {infer_h}x{infer_w}")
+    print(f"Output res: {args.height}x{args.width}")
     if args.max_frames:
         print(f"Max frames: {args.max_frames} per dataset")
     print("=" * 60)
 
     for ds in datasets:
         print(f"\n--- {ds} ---")
-        export_dataset(ds, predictor, args)
+        export_dataset(ds, predictor, args, infer_h, infer_w)
 
     print("\nDone!")
 

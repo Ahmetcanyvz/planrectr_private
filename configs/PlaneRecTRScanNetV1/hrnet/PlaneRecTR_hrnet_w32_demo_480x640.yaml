@@ -1,0 +1,9 @@
+_BASE_: PlaneRecTR_hrnet_w32_imagenet_pretrained.yaml
+MODEL:
+  WEIGHTS: "./checkpoint/PlaneRecTR_hrnet32_pretrained.pth"
+  MASK_FORMER:
+    TRAIN_NUM_POINTS: 19200  # 480/4 * (640/4) = 120 * 160
+INPUT:
+  IMAGE_SIZE: (480, 640)
+  MIN_SIZE_TEST: 640
+  MAX_SIZE_TEST: 640
