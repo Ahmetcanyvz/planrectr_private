@@ -133,7 +133,7 @@ def main():
         img_bgr = cv2.cvtColor(img_resized, cv2.COLOR_RGB2BGR)
         torch.cuda.synchronize()
         t0 = time.perf_counter()
-        with torch.no_grad():
+        with torch.no_grad(), torch.cuda.amp.autocast(dtype=torch.float16):
             predictions = predictor(img_bgr)
         sem_seg = predictions["sem_seg"].argmax(dim=0).cpu().numpy().astype(np.uint16)
         if sem_seg.shape[0] != 480 or sem_seg.shape[1] != 640:
